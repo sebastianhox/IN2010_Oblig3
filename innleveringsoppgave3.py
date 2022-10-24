@@ -1,4 +1,5 @@
-from collections import deque
+from collections import defaultdict, deque
+from heapq import heappop, heappush
 import time
 import csv
 
@@ -8,6 +9,9 @@ class Skuespiller:
     def __init__(self, id, navn):
         self.id = id
         self.navn = navn
+
+    def __lt__(self, sk):
+        return self.navn < sk.navn
 
     def __str__(self):
         return f"{self.navn}"
@@ -34,7 +38,7 @@ class IMDB_Graf:
             tsv_fil = csv.reader(fil, delimiter="\t")
 
             for linje in tsv_fil:
-                id, tittel, rating = linje[0], linje[1], linje[2]
+                id, tittel, rating = linje[0], linje[1], float(linje[2])
                 self.filmer[id] = Film(tittel,rating)
 
         print("Start skuespillerinnlesing")
@@ -88,9 +92,35 @@ class IMDB_Graf:
             v = parents[v]
         return path[::-1]
 
+    def chillesteVeiMellom(self, node1, node2):
+        dict = defaultdict(lambda: float('inf'))
+        queue = [(0, node1)]
+        dict[node1] = 0
+        parents = {} 
+        path = []
 
+        parents[node1] = None
+        while queue:
+            cost, v = heappop(queue)
+            for u in self.E[v]:
+                c = cost + (10 - self.w[(v, u[0])].rating)
+                if c < dict[u[0]]:
+                    dict[u[0]] = c
+                    heappush(queue, (c, u[0]))
+                    parents[u[0]] = v
+        
+        v = node2
 
+        if node2 not in parents:
+            return path
 
+        while v:
+            path.append(v)
+            v = parents[v]
+        totalvekt = dict[node2]
+        liste = [totalvekt, path[::-1]]
+        return liste
+        
 def antallNoder(graf):
     nodeteller = len(graf.V)
     
@@ -105,18 +135,25 @@ def antallKanter(graf):
 
     return kantteller
 
-def skrivUtSti(graf, idStart, idSlutt):
+def skrivUtKortesteSti(graf, idStart, idSlutt):
     path = graf.kortesteStiMellom(graf.V[idStart],graf.V[idSlutt])
     print(path[0])
     for i in range(len(path)-1):
-        print(f"===[ {graf.w[path[i],path[i+1]]} ]===>  {path[i+1]}")
+        print(f"===[ {graf.w[(path[i],path[i+1])]} ]===>  {path[i+1]}")
         
     print("")
 
+def skrivUtChillesteVei(graf, idStart, idSlutt):
+    liste = graf.chillesteVeiMellom(graf.V[idStart],graf.V[idSlutt])
+    totalvekt = liste[0]
+    path = liste[1]
+    print(path[0])
+    for i in range(len(path)-1):
+        print(f"===[ {graf.w[(path[i],path[i+1])]} ]===>  {path[i+1]}")
+        
+    print("Total weight:",totalvekt)
+    print("")
 
-
-
-    
 def hovedprogram():
     graf = IMDB_Graf()
 
@@ -126,10 +163,19 @@ def hovedprogram():
     print(f"Oppgave 1\n\nNodes: {antallNoder(graf)}\nEdges: {int(antallKanter(graf)/2)}\nRuntime:{elapsedTime} seconds\n")
 
     print("Oppgave 2\n")
-    skrivUtSti(graf, "nm2255973", "nm0000460")
-    skrivUtSti(graf, "nm0424060", "nm0000243")
-    skrivUtSti(graf, "nm4689420", "nm0000365")
-    skrivUtSti(graf, "nm0000288", "nm0001401")
-    skrivUtSti(graf, "nm0031483", "nm0931324")
+    skrivUtKortesteSti(graf, "nm2255973", "nm0000460")
+    skrivUtKortesteSti(graf, "nm0424060", "nm0000243")
+    skrivUtKortesteSti(graf, "nm4689420", "nm0000365")
+    skrivUtKortesteSti(graf, "nm0000288", "nm0001401")
+    skrivUtKortesteSti(graf, "nm0031483", "nm0931324")
+
+    print("Oppgave 3")
+
+    skrivUtChillesteVei(graf, "nm2255973", "nm0000460")
+    skrivUtChillesteVei(graf, "nm0424060", "nm0000243")
+    skrivUtChillesteVei(graf, "nm4689420", "nm0000365")
+    skrivUtChillesteVei(graf, "nm0000288", "nm0001401")
+    skrivUtChillesteVei(graf, "nm0031483", "nm0931324")
+
   
 hovedprogram()
