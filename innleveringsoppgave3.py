@@ -4,7 +4,7 @@ import time
 import csv
 
 
-startTime = time.time()
+startTime = time.time()        
 class Skuespiller:
     def __init__(self, id, navn):
         self.id = id
@@ -29,9 +29,10 @@ class Film:
 class IMDB_Graf:
     def __init__(self):
         self.V = {}
-        self.E = {}
+        self.E = defaultdict(set)
         self.w = {}
-        self.filmer = {}
+        self.nodeIndekser = {}
+        filmer = {}
 
         print("Start filminnlesing")
         with open("movies.tsv", encoding="mbcs") as fil:
@@ -39,7 +40,7 @@ class IMDB_Graf:
 
             for linje in tsv_fil:
                 id, tittel, rating = linje[0], linje[1], float(linje[2])
-                self.filmer[id] = Film(tittel,rating)
+                filmer[id] = Film(tittel,rating)
 
         print("Start skuespillerinnlesing")
         with open("actors.tsv", encoding="mbcs") as sFil:
@@ -51,21 +52,21 @@ class IMDB_Graf:
                 self.leggTilNode(skuespiller)
 
                 for film in filmerSpilt:
-                    if film in self.filmer:
-                        sk = self.filmer[film].skuespillere
+                    if film in filmer:
+                        sk = filmer[film].skuespillere
                         sk.append(skuespiller)
 
                         if len(sk) > 1:
                             for i in range(len(sk) - 2,-1,-1):
-                                self.leggTilKant(sk[i],sk[-1],self.filmer[film])
+                                self.leggTilKant(sk[i],sk[-1],filmer[film])
 
     def leggTilNode(self, sk):
         self.V[sk.id] = sk
-        self.E[sk] = []
+        self.nodeIndekser[sk] = len(self.nodeIndekser)
 
     def leggTilKant(self, node1, node2, film):
-        self.E[node1].append((node2,film.rating))
-        self.E[node2].append((node1,film.rating))
+        self.E[node1].add((node2,film.rating))
+        self.E[node2].add((node1,film.rating))
 
         self.w[(node1,node2)] = film
         self.w[(node2,node1)] = film
@@ -120,7 +121,31 @@ class IMDB_Graf:
         totalvekt = dict[node2]
         liste = [totalvekt, path[::-1]]
         return liste
+
+    def finnKomponenter(self):
+        paths = []
+        visited = set()
+
+
+        for v in self.V:
+            if self.V[v] not in visited:
+                paths.append(self.BFS(self.V[v], visited))
+
+        return paths
+    def BFS(self, v, visited):
+        queue = deque([v])
+        result = set()
         
+        while queue:
+            v = deque.popleft(queue)
+            result.add(v)
+            for u in self.E[v]:
+                if u[0] not in visited:
+                    visited.add(u[0])
+                    queue.append(u[0])
+
+        return result
+            
 def antallNoder(graf):
     nodeteller = len(graf.V)
     
@@ -157,10 +182,7 @@ def skrivUtChillesteVei(graf, idStart, idSlutt):
 def hovedprogram():
     graf = IMDB_Graf()
 
-    endTime = time.time()
-    elapsedTime = endTime - startTime
-
-    print(f"Oppgave 1\n\nNodes: {antallNoder(graf)}\nEdges: {int(antallKanter(graf)/2)}\nRuntime:{elapsedTime} seconds\n")
+    print(f"Oppgave 1\n\nNodes: {antallNoder(graf)}\nEdges: {int(antallKanter(graf)/2)}\n")
 
     print("Oppgave 2\n")
     skrivUtKortesteSti(graf, "nm2255973", "nm0000460")
@@ -169,13 +191,31 @@ def hovedprogram():
     skrivUtKortesteSti(graf, "nm0000288", "nm0001401")
     skrivUtKortesteSti(graf, "nm0031483", "nm0931324")
 
-    print("Oppgave 3")
+    print("Oppgave 3\n")
 
     skrivUtChillesteVei(graf, "nm2255973", "nm0000460")
     skrivUtChillesteVei(graf, "nm0424060", "nm0000243")
     skrivUtChillesteVei(graf, "nm4689420", "nm0000365")
     skrivUtChillesteVei(graf, "nm0000288", "nm0001401")
     skrivUtChillesteVei(graf, "nm0031483", "nm0931324")
+
+    
+
+    komponenter = graf.finnKomponenter()
+    dict = defaultdict(lambda: 0)
+
+
+    for komp in komponenter:
+        dict[len(komp)] = dict[len(komp)] + 1
+
+    print("Oppgave 4\n")
+    for k in dict:
+        print("There are",dict[k],"components of size",k)
+
+    endTime = time.time()
+    elapsedTime = endTime - startTime
+
+    print("\n\nRuntime:",elapsedTime)
 
   
 hovedprogram()
